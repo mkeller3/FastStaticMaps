@@ -1,69 +1,96 @@
 'use strict';
 
-const express = require('express');
-const mbgl = require('@maplibre/maplibre-gl-native');
-const request = require('request');
-const sharp = require('sharp');
-const config = require('./config');
+const Fastify = require('fastify');
+const mbglStyleSpec = require('@maplibre/maplibre-gl-style-spec');
+const builder = require('./builder');
 
-const app = express();
+const app = Fastify({
+    logger: false
+})
 
-let map = new mbgl.Map({
-    request: function (req, callback) {
-        request({
-            url: req.url,
-            encoding: null,
-            gzip: true
-        }, function (err, res, body) {
-            if (err) {
-                console.log(err)
-                callback(err);
-            } else if (res.statusCode == 200 || res.statusCode == 204) {
-                var response = {};
-
-                if (res.headers.modified) { response.modified = new Date(res.headers.modified); }
-                if (res.headers.expires) { response.expires = new Date(res.headers.expires); }
-                if (res.headers.etag) { response.etag = res.headers.etag; }
-
-                response.data = body;
-
-                callback(null, response);
-            } else {
-                callback(new Error(JSON.parse(body).message));
-            }
-        });
-    }
-});
-
-map.load(config.STYLE);
-
-app.get('/:z/:x/:y', function (req, res) {
-    let options = {
-        zoom: req.params.z,
-        center: [req.params.x, req.params.y]
-    };
-    map.render(options, function (err, buffer) {
-        if (err) {
-            res.send(err);
-        } else {
-            let image = sharp(buffer, {
-                raw: {
-                    width: 512,
-                    height: 512,
-                    channels: 4
+const PARAMETERS = {
+    schema: {
+        body: {
+            type: 'object',
+            required: [
+                'zoom',
+                'latitude',
+                'longitude',
+                'style'
+            ],
+            properties: {
+                zoom: {
+                    type: 'number',
+                    minimum: 0,
+                    maximum: 22
+                },
+                longitude: {
+                    type: 'number',
+                    minimum: -180,
+                    maximum: 180
+                },
+                latitude: {
+                    type: 'number',
+                    minimum: -90,
+                    maximum: 90
+                },
+                style: {
+                    type: 'object'
+                },
+                height: {
+                    type: 'number',
+                    default: 512,
+                    minimum: 1,
+                    maximum: 1280
+                },
+                width: {
+                    type: 'number',
+                    default: 512,
+                    minimum: 1,
+                    maximum: 1280
+                },
+                bearing: {
+                    type: 'number',
+                    default: 0,
+                    minimum: 0,
+                    maximum: 360
+                },
+                pitch: {
+                    type: 'number',
+                    default: 0,
+                    minimum: 0,
+                    maximum: 60
                 }
-            });
-            res.set('Content-Type', 'image/png');
-            image.png().toBuffer()
-            .then((result) => {
-                res.send(result);
-            });
+            }
         }
+    }
+}
 
+app.post('/static_map', PARAMETERS, function (req, res) {
+    const styleValidation = mbglStyleSpec.validate(req.body.style)
+    if (styleValidation.length != 0){
+        res.status(400)
+        return {
+            "error": styleValidation
+        }
+    }
+    let options = {
+        zoom: req.body.zoom,
+        longitude: req.body.longitude,
+        latitude: req.body.latitude,
+        pitch: req.body.pitch,
+        bearing: req.body.bearing,
+        height: req.body.height,
+        width: req.body.width,
+        style: req.body.style
+    };
+    builder.buildMap(options).then(function (data) {
+        res.type('image/png');
+        res.send(data);        
     });
 
 });
 
-app.listen(config.SERVER_PORT, function () {
-    console.log(`Server app listening on port ${config.SERVER_PORT}!`);
+app.listen(3000, function () {
+    console.log(`MapLibre Static Map API is running!`);
 });
