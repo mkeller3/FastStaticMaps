@@ -1,7 +1,6 @@
 'use strict';
 
 const Fastify = require('fastify');
-const mbglStyleSpec = require('@maplibre/maplibre-gl-style-spec');
 const builder = require('./builder');
 
 const app = Fastify({
@@ -67,13 +66,6 @@ const PARAMETERS = {
 }
 
 app.post('/static_map', PARAMETERS, function (req, res) {
-    const styleValidation = mbglStyleSpec.validate(req.body.style)
-    if (styleValidation.length != 0){
-        res.status(400)
-        return {
-            "error": styleValidation
-        }
-    }
     let options = {
         zoom: req.body.zoom,
         longitude: req.body.longitude,

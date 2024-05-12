@@ -5,12 +5,11 @@ const mbgl = require('@maplibre/maplibre-gl-native');
 const request = require('request');
 const sharp = require('sharp');
 
-
 async function paintMap(map, options){
     return new Promise(resolve => {
         map.render(options, function (err, buffer) {
             if (err) {
-                console.log(err);
+                resolve(err)
             } else {
                 for (let i = 0; i < buffer.length; i += 4) {
                     const alpha = buffer[i + 3]
@@ -49,7 +48,7 @@ async function buildMap(options){
         bearing: options.bearing == undefined ? 0 : options.bearing,
         height: options.height,
         width: options.width
-    };
+    };  
     let map = new mbgl.Map({
         request: function (req, callback) {
             request({
@@ -58,7 +57,6 @@ async function buildMap(options){
                 gzip: true
             }, function (err, res, body) {
                 if (err) {
-                    console.log(err)
                     callback(err);
                 } else if (res.statusCode == 200 || res.statusCode == 204) {
                     var response = {};
@@ -77,7 +75,10 @@ async function buildMap(options){
 
                     callback(null, response);
                 } else {
-                    callback(new Error(JSON.parse(body).message));
+                    var response = {
+                        "data": Buffer("")
+                    };
+                    callback(null, response);
                 }
             });
         }
