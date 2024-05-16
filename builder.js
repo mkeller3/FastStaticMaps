@@ -5,7 +5,8 @@ const mbgl = require('@maplibre/maplibre-gl-native');
 const request = require('request');
 const sharp = require('sharp');
 
-async function paintMap(map, options){
+// Method used to paint the map to an image
+async function paintMap(map, options) {
     return new Promise(resolve => {
         map.render(options, function (err, buffer) {
             if (err) {
@@ -40,15 +41,17 @@ async function paintMap(map, options){
     })
 }
 
-async function buildMap(options){
+// Method used to build the map with user settings
+async function buildMap(options) {
     let mapOptions = {
         zoom: options.zoom,
         center: [options.longitude, options.latitude],
         pitch: options.pitch == undefined ? 0 : options.pitch,
         bearing: options.bearing == undefined ? 0 : options.bearing,
         height: options.height,
-        width: options.width
-    };  
+        width: options.width,
+        attribution: options.attribution
+    };
     let map = new mbgl.Map({
         request: function (req, callback) {
             request({
@@ -88,7 +91,29 @@ async function buildMap(options){
 
     const result = await paintMap(map, mapOptions);
 
-    return result    
+    if (mapOptions.attribution != "") {
+        const svgImage = `
+        <svg width="${mapOptions.width}" height="${mapOptions.height}">
+        <style>
+        .title { fill: #FFF; font-size: 20px; font-weight: bold;}
+        </style>
+        <text x="2%" y="98%" text-anchor="right" class="title">${mapOptions.attribution}</text>
+        </svg>
+        `;
+        const svgBuffer = Buffer.from(svgImage);
+        console.log('weeee')
+        const image = await sharp(result)
+            .composite([
+                {
+                    input: svgBuffer,
+                    top: 0,
+                    left: 0,
+                },
+            ])
+        return image
+    }
+
+    return result
 }
 
 module.exports = { buildMap }

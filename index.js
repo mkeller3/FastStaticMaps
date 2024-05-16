@@ -38,13 +38,13 @@ const PARAMETERS = {
                 },
                 height: {
                     type: 'number',
-                    default: 512,
+                    default: 300,
                     minimum: 1,
                     maximum: 1280
                 },
                 width: {
                     type: 'number',
-                    default: 512,
+                    default: 500,
                     minimum: 1,
                     maximum: 1280
                 },
@@ -59,13 +59,17 @@ const PARAMETERS = {
                     default: 0,
                     minimum: 0,
                     maximum: 60
+                },
+                attribution: {
+                    type: 'string',
+                    default: null
                 }
             }
         }
     }
 }
 
-app.post('/static_map', PARAMETERS, function (req, res) {
+app.post('/api/v1/static_map', PARAMETERS, function (req, res) {
     let options = {
         zoom: req.body.zoom,
         longitude: req.body.longitude,
@@ -74,15 +78,21 @@ app.post('/static_map', PARAMETERS, function (req, res) {
         bearing: req.body.bearing,
         height: req.body.height,
         width: req.body.width,
-        style: req.body.style
+        style: req.body.style,
+        attribution: req.body.attribution
     };
     builder.buildMap(options).then(function (data) {
         res.type('image/png');
-        res.send(data);        
+        res.send(data);
     });
 
 });
 
-app.listen(3000, function () {
-    console.log(`MapLibre Static Map API is running!`);
+app.get('/api/v1/health_check', function (req, res) {
+    return {
+        "status": "ok"
+    }
+});
+
+app.listen({ "port": 3000 }, function () {
 });
