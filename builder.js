@@ -101,7 +101,7 @@ async function buildMap(options) {
         </svg>
         `;
         const svgBuffer = Buffer.from(svgImage);
-        console.log('weeee')
+
         const image = await sharp(result)
             .composite([
                 {
